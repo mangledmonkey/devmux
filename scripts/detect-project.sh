@@ -9,16 +9,22 @@ set -euo pipefail
 
 dir="${1:-.}"
 
+# Resolve to absolute path for node require() compatibility
+if [[ "$dir" != /* ]]; then
+  dir="$(cd "$dir" && pwd)"
+fi
+
 # Detect package manager and project type
 detect_node() {
   local pkg_manager="npm"
   local install_cmd="npm ci"
   local lock_file=""
 
-  if [[ -f "$dir/bun.lockb" ]] || [[ -f "$dir/bun.lock" ]]; then
-    pkg_manager="bun"
-    install_cmd="bun install --frozen-lockfile"
-    lock_file="bun.lockb"
+  # Check lock files in priority order (npm > pnpm > yarn > bun)
+  # npm's package-lock.json is checked first since it's most common
+  # and projects may have stale lock files from other managers
+  if [[ -f "$dir/package-lock.json" ]]; then
+    lock_file="package-lock.json"
   elif [[ -f "$dir/pnpm-lock.yaml" ]]; then
     pkg_manager="pnpm"
     install_cmd="pnpm install --frozen-lockfile"
@@ -27,8 +33,10 @@ detect_node() {
     pkg_manager="yarn"
     install_cmd="yarn install --frozen-lockfile"
     lock_file="yarn.lock"
-  elif [[ -f "$dir/package-lock.json" ]]; then
-    lock_file="package-lock.json"
+  elif [[ -f "$dir/bun.lockb" ]] || [[ -f "$dir/bun.lock" ]]; then
+    pkg_manager="bun"
+    install_cmd="bun install --frozen-lockfile"
+    lock_file="bun.lockb"
   fi
 
   echo "PROJECT_TYPE=node"
@@ -40,7 +48,7 @@ detect_node() {
   if command -v node &>/dev/null && [[ -f "$dir/package.json" ]]; then
     local scripts
     scripts=$(node -e "
-      const pkg = require('./$dir/package.json');
+      const pkg = require('$dir/package.json');
       const s = pkg.scripts || {};
       const keys = ['dev', 'start', 'test', 'lint', 'check', 'build', 'format', 'storybook'];
       keys.forEach(k => { if (s[k]) console.log('HAS_SCRIPT_' + k.toUpperCase() + '=true'); });
@@ -50,7 +58,7 @@ detect_node() {
     # Detect dev command with port support
     local dev_script
     dev_script=$(node -e "
-      const pkg = require('./$dir/package.json');
+      const pkg = require('$dir/package.json');
       const s = pkg.scripts || {};
       if (s.dev) console.log(s.dev);
     " 2>/dev/null || true)
@@ -59,7 +67,7 @@ detect_node() {
     # Detect framework
     local deps
     deps=$(node -e "
-      const pkg = require('./$dir/package.json');
+      const pkg = require('$dir/package.json');
       const all = {...(pkg.dependencies||{}), ...(pkg.devDependencies||{})};
       console.log(Object.keys(all).join(','));
     " 2>/dev/null || true)
