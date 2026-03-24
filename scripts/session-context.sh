@@ -37,9 +37,9 @@ $task_content
 
 Use cmux sidebar to report your status to the master agent:
 
-- \`cmux set-progress <0.0-1.0>\` — update progress (0.0 = started, 1.0 = done)
-- \`cmux set-status "<message>"\` — set a short status message
-- \`cmux log "<message>"\` — append to sidebar log
+- \`cmux set-progress <0.0-1.0> --label "<phase>"\` — update progress (0.0 = started, 1.0 = done)
+- \`cmux set-status status "<message>" --icon "hammer"\` — set a short status message (key=value format)
+- \`cmux log --level info --source "$branch" -- "<message>"\` — append to sidebar log
 
 Report progress at natural milestones (after completing a subtask, fixing a bug, etc.).
 
@@ -54,8 +54,8 @@ Your dev server is running in a companion pane. Read its output via:
 
 ### When Done
 
-1. Set progress to 1.0: \`cmux set-progress 1.0\`
-2. Set status to "done": \`cmux set-status "done"\`
+1. Set progress to 1.0: \`cmux set-progress 1.0 --label "Done"\`
+2. Set status to "done": \`cmux set-status status "done" --icon "checkmark"\`
 3. Ensure all changes are committed on this branch
 4. The master agent will handle merging via \`/worktree-dev:harvest\`
 EOF

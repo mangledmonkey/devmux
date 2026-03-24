@@ -14,27 +14,42 @@ Show a dashboard of all active worker worktrees with their status, task, and pro
    wt list --format=json
    ```
 
-2. **For each non-main worktree** (where `is_main` is false):
-
-   a. Read the task file if it exists:
+2. **List all cmux workspaces** to match against worktree branches:
    ```bash
-   cat <path>/.worktree-task.md 2>/dev/null
+   cmux --json list-workspaces
    ```
-   Extract the task description from the first `# Task:` heading.
-
-   b. Check cmux workspace status. Try to find a workspace named after the branch:
-   ```bash
-   cmux list-workspaces
+   The response is:
+   ```json
+   {
+     "workspaces": [
+       { "ref": "workspace:N", "title": "...", "current_directory": "...", "index": N }
+     ]
+   }
    ```
-   Look for a workspace matching the branch name.
 
-   c. If a matching workspace exists, check sidebar state:
-   ```bash
-   cmux sidebar-state --workspace <workspace_ref>
-   ```
-   This provides status, progress, and log entries set by the worker agent.
+3. **For each non-main worktree** (where `is_main` is false):
 
-3. **Extract info from wt list JSON** for each worktree:
+   a. Read the task file if it exists using the Read tool:
+      `<path>/.worktree-task.md`
+      Extract the task description from the first `# Task:` heading.
+
+   b. Find the matching cmux workspace by comparing the workspace `title` to the branch name.
+
+   c. If a matching workspace exists, get sidebar state:
+      ```bash
+      cmux sidebar-state --workspace <workspace_ref>
+      ```
+      This returns key=value pairs:
+      ```
+      progress=0.60 Implementing
+      status_count=1
+        task=Implement login flow icon=hammer
+      log_count=3
+        [info] Spawned worker for: ...
+      ```
+      Extract `progress` and status entries.
+
+4. **Extract info from wt list JSON** for each worktree:
    - `branch` — the branch name
    - `path` — worktree directory
    - `url` — dev server URL (if configured)
@@ -42,7 +57,7 @@ Show a dashboard of all active worker worktrees with their status, task, and pro
    - `working_tree.modified` — has uncommitted changes
    - `main.ahead` — commits ahead of main
 
-4. **Present a formatted table**:
+5. **Present a formatted table**:
 
    ```
    Branch          | Status    | Progress | Task                          | Port  | Commits
@@ -51,10 +66,10 @@ Show a dashboard of all active worker worktrees with their status, task, and pro
    refactor-db     | spawned   | 0%       | Refactor database queries     | 16290 | 0 ahead
    ```
 
-   - **Status**: from cmux sidebar (or "no workspace" if no cmux workspace found)
+   - **Status**: from cmux sidebar status entries (or "no workspace" if no cmux workspace found)
    - **Progress**: from cmux sidebar (0-100%)
    - **Task**: first line of `.worktree-task.md`
    - **Port**: extracted from URL
    - **Commits**: from `main.ahead`
 
-5. If no non-main worktrees exist, report "No active workers."
+6. If no non-main worktrees exist, report "No active workers."

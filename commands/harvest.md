@@ -18,11 +18,15 @@ If `$ARGUMENTS` contains a branch name, use that. Otherwise, find workers marked
 wt list --format=json
 ```
 
-Look for worktrees where the cmux sidebar status is "done" or progress is 1.0:
+Check cmux workspaces for "done" status:
 ```bash
-cmux list-workspaces
+cmux --json list-workspaces
 ```
-Check sidebar state for each workspace matching a worktree branch.
+For each workspace matching a worktree branch, check:
+```bash
+cmux sidebar-state --workspace <workspace_ref>
+```
+Look for `progress=1.00` or a status entry containing "done".
 
 If multiple are done, list them and ask which to harvest. If none are done, report that and exit.
 
@@ -75,16 +79,16 @@ If pre-merge hooks fail, report the failures and stop. The user decides whether 
 
 After merge, close the cmux workspace if it still exists:
 ```bash
-cmux list-workspaces
+cmux --json list-workspaces
 ```
-Find and close the workspace matching the branch:
+Find the workspace whose `title` matches the branch name, then:
 ```bash
 cmux close-workspace --workspace <workspace_ref>
 ```
 
 If zmx was used, clean up the session:
 ```bash
-zmx list 2>/dev/null | grep <branch> && zmx kill <branch>
+zmx list 2>/dev/null | grep <branch> && zmx kill <branch> || true
 ```
 
 ### Step 7: Report

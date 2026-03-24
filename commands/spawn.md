@@ -55,78 +55,95 @@ Parse `$ARGUMENTS` for the branch name and task description. The task should be 
 
 ### Phase B — Build cmux workspace
 
-Execute these steps sequentially, inspecting topology after splits to discover surface refs. **cmux may crash on Intel Macs during split operations** — if it does, inform the user to relaunch cmux and re-run the spawn.
+Execute these steps sequentially, using `cmux tree` after splits to discover surface refs.
 
-4. **Create workspace**:
+**Important**: All cmux commands targeting the spawned workspace must include `--workspace <ref>` since the master session's own `CMUX_WORKSPACE_ID` points to a different workspace.
+
+4. **Create workspace** with the worktree as working directory:
    ```bash
-   cmux --json new-workspace
+   cmux --json new-workspace --cwd <worktree_path>
    ```
-   Note the workspace ref from the output (e.g., `workspace:N`).
+   Parse the output for the workspace ref (e.g., `OK workspace:N` — extract `workspace:N`).
 
 5. **Rename workspace** to the branch name:
    ```bash
    cmux rename-workspace --workspace <ref> "<branch>"
    ```
 
-6. **Discover initial topology** to find the left pane surface:
+6. **Discover initial topology** to find the terminal surface ref:
    ```bash
-   cmux list-panes --workspace <ref>
-   cmux list-pane-surfaces --pane <left_pane_ref>
+   cmux tree --workspace <ref>
    ```
-   Note the surface ref — this is the left pane (Claude Code will run here).
-
-7. **Create right pane** with a split:
-   ```bash
-   cmux --json new-split right --panel <left_pane_ref>
+   Parse the tree output. The initial workspace has one pane with one terminal surface:
    ```
-
-8. **Discover topology** after split to find the right pane:
-   ```bash
-   cmux list-panes --workspace <ref>
+   └── workspace workspace:N "<branch>"
+       └── pane pane:N [focused]
+           └── surface surface:N [terminal] "..." [selected]
    ```
-   Identify the new pane (right side).
+   Note the surface ref (e.g., `surface:N`) — this is the left pane where Claude Code will run.
 
-9. **Open browser** in the right pane:
+7. **Open browser** in the workspace (creates a right split automatically):
    ```bash
    cmux --json browser open "http://localhost:<port>" --workspace <ref>
    ```
+   This returns JSON:
+   ```json
+   {
+     "surface_ref": "surface:N",
+     "pane_ref": "pane:N",
+     "placement_strategy": "split_right",
+     "created_split": true,
+     "workspace_ref": "workspace:N"
+   }
+   ```
+   Note the browser's `pane_ref` — this is the right pane.
 
-10. **Split right pane** for dev server:
+8. **Split right pane** for dev server terminal below the browser:
+   ```bash
+   cmux --json new-split down --workspace <ref>
+   ```
+   **Note**: This may crash cmux on Intel Macs due to a known bug. If the command fails or cmux becomes unresponsive, inform the user:
+   > "cmux crashed during split (known Intel Mac bug). Please relaunch cmux. The worktree and task file are already created — re-run `/worktree-dev:spawn` to retry the workspace setup, or continue with the 2-pane layout (terminal + browser)."
+
+9. **Discover final topology**:
+   ```bash
+   cmux tree --workspace <ref>
+   ```
+   The full 3-pane layout looks like:
+   ```
+   └── workspace workspace:N "<branch>"
+       ├── pane pane:A [focused]
+       │   └── surface surface:A [terminal] "..." [selected]    ← Claude Code (left)
+       ├── pane pane:B
+       │   └── surface surface:B [browser] "..." [selected]     ← Browser (right-top)
+       └── pane pane:C
+           └── surface surface:C [terminal] "..." [selected]    ← Dev server (right-bottom)
+   ```
+   Extract the dev server surface ref (`surface:C`).
+
+   If step 8 crashed and only 2 panes exist (terminal + browser), skip the dev server pane setup and note this in the report.
+
+10. **Start dev server** in the bottom-right pane (if it exists):
     ```bash
-    cmux --json new-split down --panel <right_pane_ref>
+    cmux send --workspace <ref> --surface <dev_surface> "cd <worktree_path> && npm run dev -- --port <port> 2>&1 | tee .worktree-dev.log\n"
+    ```
+    Adapt the command based on the project type detected by `/init`. Use the appropriate dev command and port flag from `.config/wt.toml`.
+
+11. **Set sidebar metadata**:
+    ```bash
+    cmux set-status task "<task description>" --icon "hammer" --workspace <ref>
+    cmux set-status branch "<branch>" --icon "git-branch" --workspace <ref>
+    cmux set-status port "<port>" --icon "globe" --workspace <ref>
+    cmux set-progress 0.0 --label "Spawned" --workspace <ref>
+    cmux log --level info --source "worktree-dev" --workspace <ref> -- "Spawned worker for: <task description>"
     ```
 
-11. **Discover final topology** — now 3 areas exist:
-    ```bash
-    cmux list-panes --workspace <ref>
-    ```
-    Map out: left pane (Claude Code), right-top pane (browser), right-bottom pane (dev server).
-    Get the dev server surface ref:
-    ```bash
-    cmux list-pane-surfaces --pane <bottom_right_pane_ref>
-    ```
-
-12. **Start dev server** in the bottom-right pane:
-    ```bash
-    cmux send --surface <dev_surface> "cd <worktree_path> && npm run dev -- --port <port> 2>&1 | tee .worktree-dev.log\n"
-    ```
-    Adapt the command based on the project type detected by `/init`. Use the appropriate dev command and port flag.
-
-13. **Set sidebar metadata**:
-    ```bash
-    cmux set-status "spawned: <branch>"
-    cmux set-progress 0.0
-    cmux log "Task: <task description>"
-    cmux log "Port: <port>"
-    cmux log "Branch: <branch>"
-    ```
-
-14. **Launch Claude Code** in the left pane. Check if zmx is available:
+12. **Launch Claude Code** in the left pane. Check if zmx is available:
     ```bash
     which zmx 2>/dev/null
     ```
-    - **With zmx**: `cmux send --surface <left_surface> "zmx new <branch> -- claude\n"`
-    - **Without zmx**: `cmux send --surface <left_surface> "cd <worktree_path> && claude\n"`
+    - **With zmx**: `cmux send --workspace <ref> --surface <left_surface> "zmx new <branch> -- claude\n"`
+    - **Without zmx**: `cmux send --workspace <ref> --surface <left_surface> "cd <worktree_path> && claude\n"`
 
 ### Report
 
@@ -135,6 +152,7 @@ Output a summary:
 - Worktree path: `<path>`
 - Dev server: `http://localhost:<port>`
 - Task: `<description>`
+- Layout: 3-pane (or 2-pane if split crashed)
 - Worker Claude Code is launching in the left pane
 
 ## Layout Reference

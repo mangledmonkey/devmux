@@ -31,9 +31,9 @@ Look at the `main.ahead` and `remote.ahead` fields for the target branch.
 
 Find and close the workspace matching the branch:
 ```bash
-cmux list-workspaces
+cmux --json list-workspaces
 ```
-If a matching workspace exists:
+Find the workspace whose `title` matches the branch name. If found:
 ```bash
 cmux close-workspace --workspace <workspace_ref>
 ```
