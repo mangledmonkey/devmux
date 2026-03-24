@@ -1,6 +1,6 @@
 # Architecture Reference
 
-Deep-dive into the worktree-dev plugin architecture.
+Deep-dive into the devmux plugin architecture.
 
 ## Tool Stack
 
@@ -69,7 +69,7 @@ Master spawns worker:
 Worker operates:
   1. SessionStart hook reads .worktree-task.md  →  context injection
   2. Worker reads task, plans, implements
-  3. Worker checks dev server: cmux read-screen / cat .worktree-dev.log
+  3. Worker checks dev server: cmux read-screen / cat .devmux.log
   4. Worker checks browser: cmux browser console/errors
   5. Worker reports: cmux set-progress / set-status / log
   6. Worker commits on branch
@@ -91,9 +91,9 @@ Workers can read dev server output three ways:
 
 2. **Log file** (full history):
    ```bash
-   cat .worktree-dev.log
+   cat .devmux.log
    ```
-   The dev server is started with `2>&1 | tee .worktree-dev.log`.
+   The dev server is started with `2>&1 | tee .devmux.log`.
 
 3. **Browser console/errors**:
    ```bash
@@ -146,7 +146,7 @@ Benefits:
 - Clean separation: bare repo holds git data, worktrees hold code
 - Pattern matches worktrunk's default path template
 
-Created via `/worktree-dev:clone` or by running `clone-bare.sh` directly.
+Created via `/devmux:clone` or by running `clone-bare.sh` directly.
 
 Critical git config applied to bare repos:
 - `remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"` — fetch all remote branches
@@ -156,7 +156,7 @@ Critical git config applied to bare repos:
 
 ## Generic Project Adaptation
 
-The `/worktree-dev:init` command detects project type and generates appropriate `.config/wt.toml`. Supported project types:
+The `/devmux:init` command detects project type and generates appropriate `.config/wt.toml`. Supported project types:
 
 | Type | Detection | Package Manager | Dev Server |
 |------|-----------|----------------|------------|

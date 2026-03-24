@@ -27,9 +27,9 @@ Master (main branch) ─── plans, decomposes, orchestrates
 The **master** agent:
 1. Plans the work (creates implementation plan)
 2. Decomposes into independent tasks
-3. Spawns workers with `/worktree-dev:spawn`
-4. Monitors progress with `/worktree-dev:workers`
-5. Harvests completed work with `/worktree-dev:harvest`
+3. Spawns workers with `/devmux:spawn`
+4. Monitors progress with `/devmux:workers`
+5. Harvests completed work with `/devmux:harvest`
 
 Each **worker** agent:
 1. Receives task context via `.worktree-task.md` (injected at session start)
@@ -65,13 +65,13 @@ When decomposing, explicitly list which files each worker may modify. If overlap
 
 | Command | Purpose |
 |---------|---------|
-| `/worktree-dev:clone <url>` | Clone repo as bare repo for worktree workflow |
-| `/worktree-dev:init` | Detect project, generate wt.toml, check tools |
-| `/worktree-dev:spawn <branch> "<task>"` | Create worker with worktree + cmux workspace |
-| `/worktree-dev:workers` | Dashboard of all active workers |
-| `/worktree-dev:harvest [branch]` | Rebase + review + merge completed work |
-| `/worktree-dev:rebase` | Rebase current branch onto origin/main |
-| `/worktree-dev:teardown [branch]` | Abandon and clean up a worker |
+| `/devmux:clone <url>` | Clone repo as bare repo for worktree workflow |
+| `/devmux:init` | Detect project, generate wt.toml, check tools |
+| `/devmux:spawn <branch> "<task>"` | Create worker with worktree + cmux workspace |
+| `/devmux:workers` | Dashboard of all active workers |
+| `/devmux:harvest [branch]` | Rebase + review + merge completed work |
+| `/devmux:rebase` | Rebase current branch onto origin/main |
+| `/devmux:teardown [branch]` | Abandon and clean up a worker |
 
 ## Port Allocation
 

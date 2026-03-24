@@ -3,7 +3,7 @@ description: Fetch origin and rebase current branch onto origin/main
 allowed-tools: [Bash]
 ---
 
-# /worktree-dev:rebase
+# /devmux:rebase
 
 Rebase the current worktree branch onto `origin/main`. Can be run by either master or worker sessions.
 

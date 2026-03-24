@@ -4,7 +4,7 @@ argument-hint: <branch> "<task description>"
 allowed-tools: [Bash, Read, Write]
 ---
 
-# /worktree-dev:spawn
+# /devmux:spawn
 
 Create a new worktree, build a cmux workspace with browser and dev server, and launch a worker Claude Code session.
 
@@ -103,7 +103,7 @@ Execute these steps sequentially, using `cmux tree` after splits to discover sur
    cmux --json new-split down --workspace <ref>
    ```
    **Note**: This may crash cmux on Intel Macs due to a known bug. If the command fails or cmux becomes unresponsive, inform the user:
-   > "cmux crashed during split (known Intel Mac bug). Please relaunch cmux. The worktree and task file are already created — re-run `/worktree-dev:spawn` to retry the workspace setup, or continue with the 2-pane layout (terminal + browser)."
+   > "cmux crashed during split (known Intel Mac bug). Please relaunch cmux. The worktree and task file are already created — re-run `/devmux:spawn` to retry the workspace setup, or continue with the 2-pane layout (terminal + browser)."
 
 9. **Discover final topology**:
    ```bash
@@ -125,7 +125,7 @@ Execute these steps sequentially, using `cmux tree` after splits to discover sur
 
 10. **Start dev server** in the bottom-right pane (if it exists):
     ```bash
-    cmux send --workspace <ref> --surface <dev_surface> "cd <worktree_path> && npm run dev -- --port <port> 2>&1 | tee .worktree-dev.log\n"
+    cmux send --workspace <ref> --surface <dev_surface> "cd <worktree_path> && npm run dev -- --port <port> 2>&1 | tee .devmux.log\n"
     ```
     Adapt the command based on the project type detected by `/init`. Use the appropriate dev command and port flag from `.config/wt.toml`.
 
@@ -135,7 +135,7 @@ Execute these steps sequentially, using `cmux tree` after splits to discover sur
     cmux set-status branch "<branch>" --icon "git-branch" --workspace <ref>
     cmux set-status port "<port>" --icon "globe" --workspace <ref>
     cmux set-progress 0.0 --label "Spawned" --workspace <ref>
-    cmux log --level info --source "worktree-dev" --workspace <ref> -- "Spawned worker for: <task description>"
+    cmux log --level info --source "devmux" --workspace <ref> -- "Spawned worker for: <task description>"
     ```
 
 12. **Launch Claude Code** in the left pane. Check if zmx is available:

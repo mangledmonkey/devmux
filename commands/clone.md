@@ -4,7 +4,7 @@ argument-hint: <url> [name]
 allowed-tools: [Bash, Read, Write]
 ---
 
-# /worktree-dev:clone
+# /devmux:clone
 
 Clone a repository as a bare repo optimized for worktree-based development.
 
@@ -31,7 +31,7 @@ Clone a repository as a bare repo optimized for worktree-based development.
 
    This creates `<name>/<name>.main/` as the working directory.
 
-4. After the worktree is created, `cd` into it and run `/worktree-dev:init` to detect the project type and generate `.config/wt.toml`.
+4. After the worktree is created, `cd` into it and run `/devmux:init` to detect the project type and generate `.config/wt.toml`.
 
 5. Report the result:
    - Bare repo path

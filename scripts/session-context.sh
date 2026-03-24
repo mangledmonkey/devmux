@@ -48,7 +48,7 @@ Report progress at natural milestones (after completing a subtask, fixing a bug,
 Your dev server is running in a companion pane. Read its output via:
 
 - \`cmux read-screen --surface <dev-surface> --lines 50 --scrollback\` — recent terminal output
-- \`cat .worktree-dev.log\` — full log history (dev server output is tee'd here)
+- \`cat .devmux.log\` — full log history (dev server output is tee'd here)
 - \`cmux browser console list\` — browser console messages
 - \`cmux browser errors list\` — browser-side errors
 
@@ -57,5 +57,5 @@ Your dev server is running in a companion pane. Read its output via:
 1. Set progress to 1.0: \`cmux set-progress 1.0 --label "Done"\`
 2. Set status to "done": \`cmux set-status status "done" --icon "checkmark"\`
 3. Ensure all changes are committed on this branch
-4. The master agent will handle merging via \`/worktree-dev:harvest\`
+4. The master agent will handle merging via \`/devmux:harvest\`
 EOF

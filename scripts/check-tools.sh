@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check availability of required and optional tools for worktree-dev workflow.
+# Check availability of required and optional tools for devmux workflow.
 # Outputs status for each tool with install instructions for missing ones.
 
 set -euo pipefail
@@ -28,7 +28,7 @@ check_tool() {
   fi
 }
 
-echo "=== worktree-dev tool check ==="
+echo "=== devmux tool check ==="
 echo ""
 
 check_tool "wt" "true" \

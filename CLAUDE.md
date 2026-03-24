@@ -1,13 +1,13 @@
-# CLAUDE.md — worktree-dev plugin
+# CLAUDE.md — devmux plugin
 
 Claude Code plugin for multi-agent worktree-based development using cmux + worktrunk + zmx.
 
 ## Project Structure
 
 ```
-~/dev/worktree-dev/
-├── worktree-dev          (bare repo)
-└── worktree-dev.main/    (main worktree — you are here)
+~/dev/devmux/
+├── devmux          (bare repo)
+└── devmux.main/    (main worktree — you are here)
     ├── .claude-plugin/   (plugin manifest + hooks)
     ├── commands/         (7 slash commands)
     ├── scripts/          (5 bash scripts)
@@ -18,10 +18,10 @@ Claude Code plugin for multi-agent worktree-based development using cmux + workt
 
 Test the plugin with:
 ```bash
-claude --plugin-dir ~/dev/worktree-dev/worktree-dev.main
+claude --plugin-dir ~/dev/devmux/devmux.main
 ```
 
-Commands are namespaced as `/worktree-dev:spawn`, `/worktree-dev:init`, etc.
+Commands are namespaced as `/devmux:spawn`, `/devmux:init`, etc.
 
 ## Tool Stack
 
@@ -32,7 +32,7 @@ Commands are namespaced as `/worktree-dev:spawn`, `/worktree-dev:init`, etc.
 
 ## Implementation Plan
 
-Full plan: `~/dev/marketmade/.agent/plans/worktree-dev-plugin.md`
+Full plan: `~/dev/marketmade/.agent/plans/devmux-plugin.md`
 
 ## Known Constraints
 

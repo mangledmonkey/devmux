@@ -4,7 +4,7 @@ argument-hint: "[branch]"
 allowed-tools: [Bash, Read]
 ---
 
-# /worktree-dev:teardown
+# /devmux:teardown
 
 Abandon a worker's work, close its cmux workspace, and remove the worktree.
 

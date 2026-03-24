@@ -3,7 +3,7 @@ description: List active worker worktrees and their status
 allowed-tools: [Bash, Read]
 ---
 
-# /worktree-dev:workers
+# /devmux:workers
 
 Show a dashboard of all active worker worktrees with their status, task, and progress.
 

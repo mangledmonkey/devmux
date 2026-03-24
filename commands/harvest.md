@@ -4,7 +4,7 @@ argument-hint: "[branch]"
 allowed-tools: [Bash, Read, Glob, Grep]
 ---
 
-# /worktree-dev:harvest
+# /devmux:harvest
 
 Harvest a completed worker branch: rebase onto main, review the diff, run pre-merge checks, merge, and clean up the workspace.
 
