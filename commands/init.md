@@ -107,6 +107,8 @@ Ensure these entries exist in `.gitignore`:
 .worktrees/
 .worktree-task.md
 .devmux.log
+.devmux-plan.md
+.devmux-workspace.json
 ```
 
 Read the existing `.gitignore` and append only missing entries.

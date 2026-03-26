@@ -1,7 +1,7 @@
 ---
 description: Abandon and clean up a worker worktree and its cmux workspace
 argument-hint: "[branch]"
-allowed-tools: [Bash, Read]
+allowed-tools: [Bash, Read, Write]
 ---
 
 # /devmux:teardown
@@ -57,10 +57,20 @@ Then remove:
 wt remove <branch> --force
 ```
 
-### Step 6: Report
+### Step 6: Update the plan
+
+If `.devmux-plan.md` exists, read it and find any tasks whose `**Branch**` matches the torn-down branch. Reset their status:
+- `**Status**`: `in_progress` → `queued`
+- `**Branch**`: clear to `—`
+- `**Worker**`: clear to `—`
+
+Write the updated plan back using the Write tool.
+
+### Step 7: Report
 
 Confirm cleanup:
 - Workspace closed
 - zmx session killed (if applicable)
 - Worktree and branch removed
+- Plan tasks reset to `queued` (if any were linked)
 - Currently on: `<default branch>`
