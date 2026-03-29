@@ -32,11 +32,14 @@ fi
 workspace_json=".devmux-workspace.json"
 browser_surface=""
 plan_tasks=""
+layout=""
 if [[ -f "$workspace_json" ]]; then
-  browser_surface=$(grep -o '"browser_surface"[[:space:]]*:[[:space:]]*"[^"]*"' "$workspace_json" | head -1 | sed 's/.*: *"//;s/"//')
-  plan_tasks=$(grep -o '"plan_tasks"[[:space:]]*:[[:space:]]*\[[^]]*\]' "$workspace_json" | head -1 | sed 's/.*: *//;s/[][]//g;s/"//g')
+  browser_surface=$(grep -o '"browser_surface"[[:space:]]*:[[:space:]]*"[^"]*"' "$workspace_json" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//') || true
+  plan_tasks=$(grep -o '"plan_tasks"[[:space:]]*:[[:space:]]*\[[^]]*\]' "$workspace_json" 2>/dev/null | head -1 | sed 's/.*: *//;s/[][]//g;s/"//g') || true
+  layout=$(grep -o '"layout"[[:space:]]*:[[:space:]]*"[^"]*"' "$workspace_json" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//') || true
 fi
 
+# --- Header ---
 cat <<EOF
 ## Worker Agent Context
 
@@ -45,16 +48,17 @@ You are a **worker agent** in a worktree-based multi-agent development workflow.
 **Branch**: \`$branch\`
 EOF
 
-# Include plan task IDs if available
 if [[ -n "$plan_tasks" ]]; then
   echo "**Plan tasks**: $plan_tasks"
 fi
-
-# Include browser surface ref if available
 if [[ -n "$browser_surface" ]]; then
   echo "**Browser surface**: \`$browser_surface\`"
 fi
+if [[ -n "$layout" ]]; then
+  echo "**Layout**: $layout"
+fi
 
+# --- Task ---
 cat <<EOF
 
 ### Your Task
@@ -70,31 +74,60 @@ Use cmux sidebar to report your status to the master agent:
 - \`cmux log --level info --source "$branch" -- "<message>"\` — append to sidebar log
 
 Report progress at natural milestones (after completing a subtask, fixing a bug, etc.).
+EOF
+
+# --- Layout-specific instructions ---
+if [[ "$layout" == "web" ]]; then
+  cat <<EOF
 
 ### Accessing Dev Server Output
 
-Your dev server is running in a companion pane. Read its output via:
+Your dev server is running in a small companion pane (bottom-right). Read its output via:
 
 - \`cmux read-screen --surface <dev-surface> --lines 50 --scrollback\` — recent terminal output
 - \`cat .devmux.log\` — full log history (dev server output is tee'd here)
 EOF
+  if [[ -n "$browser_surface" ]]; then
+    cat <<EOF
 
-# Include browser-specific instructions with the correct surface ref
-if [[ -n "$browser_surface" ]]; then
-  cat <<EOF
-- \`cmux browser console list --surface $browser_surface\` — browser console messages
-- \`cmux browser errors list --surface $browser_surface\` — browser-side errors
+### Browser Panel
+
+Your browser panel (right side) shows the running app. Use these commands for visual feedback:
+
 - \`cmux browser snapshot --surface $browser_surface --interactive\` — DOM/accessibility tree
+- \`cmux browser console list --surface $browser_surface\` — console messages
+- \`cmux browser errors list --surface $browser_surface\` — errors
 - \`cmux browser screenshot --surface $browser_surface\` — visual screenshot
+- \`cmux browser goto --surface $browser_surface "<url>"\` — navigate to a specific page
+EOF
+  fi
+elif [[ "$layout" == "tool" ]]; then
+  cat <<EOF
+
+### Workspace Layout
+
+You have a **tool layout** — no dev server or browser by default. Your right pane is a utility terminal for running tests, builds, and commands.
+
+To open a browser on demand (e.g., for Storybook, docs preview, Obsidian):
+- \`cmux browser open <url>\` — opens a browser surface in the workspace
+
+Once a browser is open, use \`cmux browser snapshot\`, \`cmux browser console list\`, etc. for feedback.
 EOF
 else
-  cat <<EOF
-- \`cmux browser console list\` — browser console messages
-- \`cmux browser errors list\` — browser-side errors
+  # Minimal or unknown layout
+  if [[ -n "$browser_surface" ]]; then
+    cat <<EOF
+
+### Browser Access
+
+- \`cmux browser snapshot --surface $browser_surface --interactive\` — DOM/accessibility tree
+- \`cmux browser console list --surface $browser_surface\` — console messages
+- \`cmux browser errors list --surface $browser_surface\` — errors
 EOF
+  fi
 fi
 
-# Agent Teams preamble if task file includes team instructions
+# --- Agent Teams preamble ---
 if [[ "$has_agent_teams" == "true" ]]; then
   cat <<EOF
 
@@ -110,6 +143,7 @@ The tester teammate is REQUIRED — do not skip testing. You must not signal com
 EOF
 fi
 
+# --- Completion ---
 cat <<EOF
 
 ### When Done

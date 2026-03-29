@@ -71,11 +71,13 @@ Files that multiple tasks touch need special handling:
 
 ### Adaptive Team Composition
 
+Security is included on **all code tasks** — it audits for secrets, PII, injection, auth/authz, and insecure data handling regardless of frontend/backend/infra.
+
 | Task type | Team | Indicators |
 |-----------|------|------------|
-| UI component | lead + tester (unit + Storybook) + reviewer | `.svelte`, `.tsx`, `.vue`, components/, routes with UI |
+| UI component | lead + tester (unit + Storybook) + reviewer + security | `.svelte`, `.tsx`, `.vue`, components/, routes with UI |
 | API/backend | lead + tester (API tests) + reviewer + security | server/, api/, handlers, database, auth |
-| Infrastructure/config | lead + tester (smoke tests) | config, build scripts, CI, tooling |
+| Infrastructure/config | lead + tester (smoke tests) + security | config, build scripts, CI, tooling |
 | Documentation | solo (no team) | only `.md` files |
 
 Override with `--solo` or `--team` flags on `/devmux:spawn`.

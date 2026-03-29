@@ -10,13 +10,13 @@ Teammates work through the shared task list and file system. Only the worker lea
 
 ## Team Composition by Task Type
 
-The `/devmux:spawn` command auto-detects the task type and writes appropriate `## Agent Team Instructions` into `.worktree-task.md`.
+The `/devmux:spawn` command auto-detects the task type and writes appropriate `## Agent Team Instructions` into `.worktree-task.md`. Security is included on all code tasks.
 
 | Task type | Teammates | Key instructions |
 |-----------|-----------|-----------------|
-| UI component | tester (unit + Storybook) + reviewer | Storybook stories, browser snapshot verification |
-| API/backend | tester (API tests) + reviewer + security | API test patterns, security audit |
-| Infrastructure | tester (smoke tests) | Minimal smoke/regression tests |
+| UI component | tester (unit + Storybook) + reviewer + security | Storybook stories, browser snapshot verification, security audit |
+| API/backend | tester (API tests) + reviewer + security | API test patterns, auth/authz audit, injection checks |
+| Infrastructure | tester (smoke tests) + security | Smoke tests, secrets/config audit |
 | Documentation | none (solo) | No team needed |
 
 ## Worker Lead Responsibilities
@@ -51,23 +51,47 @@ The reviewer:
 
 ## Security Teammate Pattern
 
-Included for API/backend tasks. Audits for:
-- XSS, CSRF, injection vulnerabilities
-- Authentication/authorization bypass
-- Data exposure, insecure defaults
-- Reports with severity ratings (critical/high/medium/low)
+Included on **all code tasks**. The security teammate does NOT modify code — it reports findings with structured output.
+
+### Review scope
+- **Injection**: SQL, XSS, command, template injection. Traces user input from source to sink.
+- **Secrets**: Hardcoded API keys, tokens, passwords, PII in code. Known prefixes (sk-, AKIA, ghp_, xoxb-).
+- **Auth/Authz**: Missing authentication on state-changing endpoints, missing resource ownership checks, JWT issues, CSRF.
+- **Data exposure**: PII logged, in error responses, stored unencrypted, or in URL parameters.
+- **Supply chain**: New dependencies pinned, no typosquatting, no known critical CVEs.
+- **Cryptography**: Strong algorithms, secure random, proper modes.
+- **LLM security** (when applicable): Prompt injection defenses, output sanitization, system prompt protection.
+
+### Severity levels
+- **CRITICAL**: Directly exploitable (RCE, data breach). Block merge.
+- **HIGH**: Exploitable with preconditions or systemic auth failure. Block merge.
+- **MEDIUM**: Increases attack surface, not directly exploitable. Report.
+- **LOW**: Hardening suggestion.
+
+### Report-don't-fix model
+The security teammate preserves separation of duties: it reviews, the implementer fixes. Each finding includes:
+- File/lines, CWE category, description, evidence, remediation code, test suggestion.
+- Verdict: PASS / FAIL / PASS WITH NOTES.
+- Max 2 remediation cycles, then escalate to human.
+
+### Interaction with other teammates
+- Provides the **tester** with specific security test cases (exact inputs, expected behavior).
+- Routes **CRITICAL/HIGH** findings back to the implementer via the lead.
+- If a systemic pattern is found (e.g., string concatenation in SQL throughout), recommends a codebase-wide fix rather than flagging each instance.
 
 ## Quality Gate Flow
 
 ```
 1. Implementation subtasks completed
 2. Test subtasks completed
-3. Lead runs full test suite → must pass
-4. Lead runs lint/check → must pass
-5. Lead checks browser (UI tasks) → must be clean
-6. If any gate fails → create fix tasks, iterate
-7. All gates pass → commit + push + PR
-8. Signal completion via cmux sidebar
+3. Security teammate reviews all changed files → produces report
+4. If CRITICAL/HIGH findings → route to implementer, re-review (max 2 cycles)
+5. Lead runs full test suite → must pass
+6. Lead runs lint/check → must pass
+7. Lead checks browser (web layout) → must be clean
+8. If any gate fails → create fix tasks, iterate
+9. All gates pass + security verdict is PASS or PASS WITH NOTES → commit + push + PR
+10. Signal completion via cmux sidebar
 ```
 
 ## What NOT to Do

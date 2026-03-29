@@ -26,7 +26,7 @@ macOS native terminal with visual workspace management:
 ### zmx (optional)
 Session persistence layer:
 - Wraps processes so they survive terminal/cmux crashes
-- `zmx new <name> -- <command>` — start persistent session
+- `zmx attach <name> <command>` — attach to session (creates if needed), run command
 - `zmx attach <name>` — reattach after crash
 - `zmx list` — show active sessions
 - Not a multiplexer — just persistence
@@ -140,7 +140,7 @@ Worktrunk's `{{ branch | hash_port }}` filter generates deterministic ports:
 
 When zmx is available, worker Claude Code sessions are wrapped:
 ```bash
-zmx new <branch-name> -- claude
+zmx attach <branch-name> claude
 ```
 
 Benefits:
