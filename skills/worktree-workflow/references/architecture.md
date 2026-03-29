@@ -1,6 +1,6 @@
-# Architecture Reference
+# Architecture Reference (v2)
 
-Deep-dive into the devmux plugin architecture.
+Deep-dive into the devmux plugin architecture. See also [agent-teams.md](agent-teams.md) and [browser-loop.md](browser-loop.md).
 
 ## Tool Stack
 
@@ -26,58 +26,93 @@ macOS native terminal with visual workspace management:
 ### zmx (optional)
 Session persistence layer:
 - Wraps processes so they survive terminal/cmux crashes
-- `zmx new <name> -- <command>` — start persistent session
+- `zmx attach <name> <command>` — attach to session (creates if needed), run command
 - `zmx attach <name>` — reattach after crash
 - `zmx list` — show active sessions
 - Not a multiplexer — just persistence
 
 ### Claude Code
 AI agent running in each workspace:
-- Master session plans and orchestrates
+- Master session plans and orchestrates via `.devmux-plan.md`
 - Worker sessions execute focused tasks
 - SessionStart hook injects task context in worktrees
 - Workers read `.worktree-task.md` for their assignment
+- Workers use Agent Teams (in-process mode) for sub-task coordination
 
-## Worker Workspace Layout
+### Claude Code Agent Teams (within workers)
+Sub-task coordination layer running inside each worker session:
+- **In-process mode only** — cmux handles the visual layer, not tmux
+- Shared task list with dependency resolution
+- Inter-teammate messaging (mailbox)
+- Quality gate hooks: `TaskCompleted`, `TeammateIdle`
+- Plan approval flow for reviewer teammates
+- Teammates: tester, reviewer, security (adaptive by task type)
 
+## Worker Workspace Layouts
+
+### Web layout (3-pane) — web frameworks with dev servers
 ```
 ┌─────────────────┬──────────────────┐
 │                 │ cmux Browser     │
 │ Claude Code     │ localhost:port   │
-│ (worker agent)  │                  │
-│                 ├──────────────────┤
+│ (worker agent   │ (~80% height)    │
+│  + Agent Team)  ├──────────────────┤
 │                 │ Dev Server logs  │
-│                 │ :hash_port       │
+│                 │ (~20% height)    │
 └─────────────────┴──────────────────┘
 ```
 
-- **Left pane** (full height): Claude Code — primary workspace
-- **Right pane top**: cmux browser — visual feedback from dev server
-- **Right pane bottom**: Dev server terminal — logs
+### Tool layout (2-pane) — CLIs, plugins, libraries
+```
+┌─────────────────┬──────────────────┐
+│ Claude Code     │ Utility terminal │
+│ (worker agent   │ (tests, builds)  │
+│  + Agent Team)  │                  │
+└─────────────────┴──────────────────┘
+```
+
+### Minimal layout (1-pane) — documentation-only tasks
+```
+┌────────────────────────────────────┐
+│ Claude Code (solo worker)          │
+└────────────────────────────────────┘
+```
+
+Browser can be added on demand to any layout: `cmux browser open <url>`
 
 ## Data Flow
 
 ```
-Master spawns worker:
-  1. wt switch --create <branch> --no-cd  →  creates worktree
-  2. Write .worktree-task.md              →  task handoff file
-  3. cmux new-workspace                    →  visual workspace
-  4. cmux new-split / browser open         →  layout
-  5. cmux send (dev server)                →  start dev server
-  6. cmux send (claude)                    →  launch worker agent
+Master plans:
+  1. /devmux:plan "description"           →  analyzes codebase
+  2. Write .devmux-plan.md                →  tasks with dependencies, file ownership
 
-Worker operates:
-  1. SessionStart hook reads .worktree-task.md  →  context injection
-  2. Worker reads task, plans, implements
-  3. Worker checks dev server: cmux read-screen / cat .devmux.log
-  4. Worker checks browser: cmux browser console/errors
-  5. Worker reports: cmux set-progress / set-status / log
-  6. Worker commits on branch
+Master spawns worker:
+  1. wt switch --create <branch> --no-cd  →  creates worktree (hooks: npm ci, dev server)
+  2. Write .worktree-task.md              →  task + Agent Teams instructions
+  3. Write .devmux-workspace.json         →  cmux surface refs for worker
+  4. cmux new-workspace + browser + split →  3-pane layout
+  5. cmux send (dev server)               →  start dev server
+  6. cmux send (claude)                   →  launch worker agent
+  7. Update .devmux-plan.md               →  tasks → in_progress
+
+Worker operates (with Agent Team):
+  1. SessionStart hook reads .worktree-task.md  →  context + team instructions
+  2. Worker creates Agent Team (tester + reviewer, in-process mode)
+  3. Lead decomposes into subtasks on shared task list
+  4. Tester writes tests alongside implementation
+  5. Lead runs browser feedback loops: snapshot / console / errors
+  6. Lead reports: cmux set-progress / set-status / log
+  7. All tests pass → commit, push, gh pr create
+  8. cmux set-progress 1.0, set-status pr "<URL>"
 
 Master harvests:
-  1. wt merge  →  squash + rebase + hooks + merge + cleanup
-  2. cmux close-workspace  →  close visual workspace
-  3. zmx kill (if applicable)  →  clean up session
+  1. Rebase onto main (tiered conflict resolution)
+  2. wt merge  →  squash + pre-merge hooks + merge + cleanup
+  3. cmux close-workspace + zmx kill
+  4. Update .devmux-plan.md  →  tasks → merged
+  5. Proactively rebase active workers behind main
+  6. Report unblocked tasks, suggest next spawns
 ```
 
 ## Worker Log Access
@@ -120,7 +155,7 @@ Worktrunk's `{{ branch | hash_port }}` filter generates deterministic ports:
 
 When zmx is available, worker Claude Code sessions are wrapped:
 ```bash
-zmx new <branch-name> -- claude
+zmx attach <branch-name> claude
 ```
 
 Benefits:

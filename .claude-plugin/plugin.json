@@ -1,7 +1,7 @@
 {
   "name": "devmux",
   "description": "Multi-agent worktree development. Spawn worker Claude Code sessions in isolated worktrees with cmux workspaces for parallel AI development.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "hooks": "./.claude-plugin/hooks/hooks.json",
   "skills": ["./skills/worktree-workflow"]
 }

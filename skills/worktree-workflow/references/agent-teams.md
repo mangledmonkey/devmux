@@ -1,0 +1,102 @@
+# Agent Teams Integration
+
+How devmux workers use Claude Code Agent Teams for sub-task coordination.
+
+## Key Constraint: In-Process Mode Only
+
+Agent Teams' split-pane mode supports tmux/iTerm2 but NOT cmux. Since devmux uses cmux for the visual layer, all Agent Teams within workers must run in **in-process mode** (the default).
+
+Teammates work through the shared task list and file system. Only the worker lead has cmux access for browser feedback loops.
+
+## Team Composition by Task Type
+
+The `/devmux:spawn` command auto-detects the task type and writes appropriate `## Agent Team Instructions` into `.worktree-task.md`. Security is included on all code tasks.
+
+| Task type | Teammates | Key instructions |
+|-----------|-----------|-----------------|
+| UI component | tester (unit + Storybook) + reviewer + security | Storybook stories, browser snapshot verification, security audit |
+| API/backend | tester (API tests) + reviewer + security | API test patterns, auth/authz audit, injection checks |
+| Infrastructure | tester (smoke tests) + security | Smoke tests, secrets/config audit |
+| Documentation | none (solo) | No team needed |
+
+## Worker Lead Responsibilities
+
+The worker lead (the main Claude session in the cmux workspace):
+- Creates the Agent Team based on `.worktree-task.md` instructions
+- Decomposes the task into subtasks on the shared task list
+- Runs browser feedback loops between implementation rounds
+- Verifies all tests pass before signaling completion
+- Commits, pushes, and creates the PR
+- Reports progress to the master via cmux sidebar
+
+## Tester Teammate Pattern
+
+The tester is **always required** for code tasks. Its responsibilities:
+
+1. Write tests alongside implementation — not after
+2. Use the project's detected test framework
+3. Cover every acceptance criterion with at least one test
+4. Write Storybook stories for UI components (if project uses Storybook)
+5. Run the test suite and report pass/fail
+
+The tester should create test subtasks that depend on the corresponding implementation subtasks in the shared task list.
+
+## Reviewer Teammate Pattern
+
+The reviewer:
+- Checks for best practices, proper error handling, accessibility, performance
+- Requires plan approval before making any changes
+- Reports issues clearly with suggested fixes
+- Does NOT edit files — only reviews and comments via the task list
+
+## Security Teammate Pattern
+
+Included on **all code tasks**. The security teammate does NOT modify code — it reports findings with structured output.
+
+### Review scope
+- **Injection**: SQL, XSS, command, template injection. Traces user input from source to sink.
+- **Secrets**: Hardcoded API keys, tokens, passwords, PII in code. Known prefixes (sk-, AKIA, ghp_, xoxb-).
+- **Auth/Authz**: Missing authentication on state-changing endpoints, missing resource ownership checks, JWT issues, CSRF.
+- **Data exposure**: PII logged, in error responses, stored unencrypted, or in URL parameters.
+- **Supply chain**: New dependencies pinned, no typosquatting, no known critical CVEs.
+- **Cryptography**: Strong algorithms, secure random, proper modes.
+- **LLM security** (when applicable): Prompt injection defenses, output sanitization, system prompt protection.
+
+### Severity levels
+- **CRITICAL**: Directly exploitable (RCE, data breach). Block merge.
+- **HIGH**: Exploitable with preconditions or systemic auth failure. Block merge.
+- **MEDIUM**: Increases attack surface, not directly exploitable. Report.
+- **LOW**: Hardening suggestion.
+
+### Report-don't-fix model
+The security teammate preserves separation of duties: it reviews, the implementer fixes. Each finding includes:
+- File/lines, CWE category, description, evidence, remediation code, test suggestion.
+- Verdict: PASS / FAIL / PASS WITH NOTES.
+- Max 2 remediation cycles, then escalate to human.
+
+### Interaction with other teammates
+- Provides the **tester** with specific security test cases (exact inputs, expected behavior).
+- Routes **CRITICAL/HIGH** findings back to the implementer via the lead.
+- If a systemic pattern is found (e.g., string concatenation in SQL throughout), recommends a codebase-wide fix rather than flagging each instance.
+
+## Quality Gate Flow
+
+```
+1. Implementation subtasks completed
+2. Test subtasks completed
+3. Security teammate reviews all changed files → produces report
+4. If CRITICAL/HIGH findings → route to implementer, re-review (max 2 cycles)
+5. Lead runs full test suite → must pass
+6. Lead runs lint/check → must pass
+7. Lead checks browser (web layout) → must be clean
+8. If any gate fails → create fix tasks, iterate
+9. All gates pass + security verdict is PASS or PASS WITH NOTES → commit + push + PR
+10. Signal completion via cmux sidebar
+```
+
+## What NOT to Do
+
+- Do NOT use split-pane mode (`--teammate-mode tmux`) — cmux handles layout
+- Do NOT let teammates access cmux — only the lead has cmux access
+- Do NOT signal completion before tests pass
+- Do NOT spawn nested teams — teammates cannot create their own teams
