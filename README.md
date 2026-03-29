@@ -1,19 +1,21 @@
 # devmux
 
-Claude Code plugin for multi-agent parallel development using [worktrunk](https://github.com/nicholasgasior/worktrunk) + [cmux](https://cmux.com).
+Claude Code plugin for multi-agent parallel development using [worktrunk](https://github.com/nicholasgasior/worktrunk) + [cmux](https://cmux.com) + [Agent Teams](https://code.claude.com/docs/en/agent-teams).
 
-A master Claude Code agent plans and decomposes work, then spawns worker agents — each in its own git worktree with a dedicated cmux workspace, browser panel, dev server, and sidebar status reporting.
+A master Claude Code agent plans and decomposes work, then spawns worker agents — each in its own git worktree with a dedicated cmux workspace. Workers use Agent Teams internally (tester + reviewer + security) to develop thoroughly, run tests, and create PRs.
+
+### Workspace layouts
 
 ```
-┌─────────────────┬──────────────────┐
-│                 │  cmux Browser    │
-│  Claude Code    │  localhost:14523 │
-│  (worker agent) │                  │
-│                 ├──────────────────┤
-│                 │  Dev Server      │
-│                 │  :14523          │
-└─────────────────┴──────────────────┘
-  ↑ each worker gets this layout
+Web (3-pane)                    Tool (2-pane)              Minimal (1-pane)
+┌──────────┬──────────┐         ┌──────────┬──────────┐    ┌────────────────────┐
+│          │ Browser  │         │          │ Utility  │    │                    │
+│ Claude   │ (~80%)   │         │ Claude   │ terminal │    │ Claude (solo)      │
+│ + Team   ├──────────┤         │ + Team   │          │    │                    │
+│          │ Dev logs │         │          │          │    └────────────────────┘
+│          │ (~20%)   │         │          │          │
+└──────────┴──────────┘         └──────────┴──────────┘
+  web frameworks                  CLIs, plugins, libs       docs only
 ```
 
 ## Prerequisites
@@ -21,19 +23,20 @@ A master Claude Code agent plans and decomposes work, then spawns worker agents 
 | Tool | Purpose | Install |
 |------|---------|---------|
 | [worktrunk](https://github.com/nicholasgasior/worktrunk) (`wt`) | Worktree lifecycle, hooks, port allocation | `brew install worktrunk` |
-| [cmux](https://cmux.com) | Terminal workspaces, browser panels, sidebar | Download from cmux.com |
-| [Claude Code](https://claude.ai/code) | AI agent in each workspace | `npm install -g @anthropic-ai/claude-code` |
-| [zmx](https://github.com/nicholasgasior/zmx) (optional) | Session persistence across crashes | `brew install neurosnap/tap/zmx` |
+| [cmux](https://cmux.com) (≥0.63.1) | Terminal workspaces, browser panels, sidebar | Download from cmux.com |
+| [Claude Code](https://claude.ai/code) (≥2.1.33) | AI agent in each workspace | `npm install -g @anthropic-ai/claude-code` |
+| [zmx](https://github.com/neurosnap/zmx) (recommended) | Session persistence, Agent Teams interactivity | `brew install neurosnap/tap/zmx` |
+
+Agent Teams requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your Claude Code settings.
 
 ## Install
 
 ```bash
 # Clone and use directly
-git clone https://github.com/user/devmux.git
+git clone https://github.com/mangledmonkey/devmux.git
 claude --plugin-dir ~/path/to/devmux
 
-# Or add to an existing Claude Code session
-# (plugin management via Claude Code settings)
+# Or install globally via Claude Code Skills Marketplace (coming soon)
 ```
 
 Commands are namespaced as `/devmux:spawn`, `/devmux:init`, etc.
@@ -44,68 +47,95 @@ Commands are namespaced as `/devmux:spawn`, `/devmux:init`, etc.
 # 1. Clone a repo with bare-repo layout (or run /devmux:init in an existing repo)
 /devmux:clone https://github.com/org/project.git
 
-# 2. Spawn a worker on a new branch
-/devmux:spawn feature-auth "Implement OAuth login with session management"
+# 2. Plan the work
+/devmux:plan "Build user authentication with OAuth"
 
-# 3. Monitor workers
-/devmux:workers
+# 3. Spawn workers for ready tasks
+/devmux:spawn auth-routes "Implement auth API routes" --plan-tasks 1.1,1.2
 
-# 4. Merge completed work
-/devmux:harvest feature-auth
+# 4. Monitor progress
+/devmux:status
+
+# 5. Merge completed work
+/devmux:harvest auth-routes
 ```
 
 ## Commands
 
 | Command | Description | Arguments |
 |---------|-------------|-----------|
+| `/devmux:plan` | Create or review the master development plan | `[description]` |
 | `/devmux:clone` | Clone repo as bare repo with worktree-friendly layout | `<url> [name]` |
 | `/devmux:init` | Detect project type, check tools, generate `.config/wt.toml` | — |
-| `/devmux:spawn` | Create worker: worktree + cmux workspace + browser + dev server | `<branch> "<task>"` |
-| `/devmux:workers` | Dashboard of all active workers with status and progress | — |
-| `/devmux:harvest` | Rebase, review, test, merge, and clean up a completed branch | `[branch]` |
+| `/devmux:spawn` | Create worker: worktree + cmux workspace + Agent Teams | `<branch> "<task>" [--plan-tasks] [--solo\|--team]` |
+| `/devmux:status` | Unified dashboard of plan progress + worker status | — |
+| `/devmux:browser` | Inspect a worker's browser panel from the master session | `[branch]` |
+| `/devmux:harvest` | Rebase, review, merge, update plan, rebase active workers | `[branch]` |
 | `/devmux:rebase` | Fetch origin and rebase current branch onto `origin/main` | — |
-| `/devmux:teardown` | Abandon worker: close workspace, remove worktree | `[branch]` |
+| `/devmux:teardown` | Abandon worker: close workspace, remove worktree, reset plan | `[branch]` |
+| `/devmux:workers` | Legacy dashboard (use `/devmux:status` instead) | — |
 
 ## How it works
 
-### Master-worker pattern
+### Master-worker pattern with Agent Teams
 
 ```
 Master (main branch) ─── plans, decomposes, orchestrates
-  ├─ Worker A (feature-auth)  ─── focused task, isolated worktree
-  ├─ Worker B (fix-sidebar)   ─── focused task, isolated worktree
-  └─ Worker C (refactor-db)   ─── focused task, isolated worktree
+  ├─ Worker A (feature-auth, cmux workspace)
+  │    └─ Agent Team: lead + tester + reviewer + security
+  ├─ Worker B (fix-sidebar, cmux workspace)
+  │    └─ Agent Team: lead + tester + security
+  └─ Worker C (update-docs, cmux workspace)
+       └─ Solo (no team — docs only)
 ```
 
-The **master** agent decomposes work into independent tasks, spawns workers with `/devmux:spawn`, monitors progress with `/devmux:workers`, and harvests completed branches with `/devmux:harvest`.
+The **master** agent creates a plan (`/devmux:plan`), spawns workers for ready tasks (`/devmux:spawn`), monitors progress (`/devmux:status`), and harvests completed branches (`/devmux:harvest`).
 
-Each **worker** agent receives its task via `.worktree-task.md` (injected at session start by a hook), works in isolation, reports progress through the cmux sidebar, and signals completion when done.
+Each **worker** agent receives its task via `.worktree-task.md`, creates an Agent Team with teammates (tester, reviewer, security), develops with test and security gates, then commits, pushes, and creates a PR.
 
 ### What `/devmux:spawn` sets up
 
-1. **worktrunk** creates an isolated worktree with `wt switch --create <branch>`
-2. A `.worktree-task.md` file is written to the worktree with the task description
-3. **cmux** creates a workspace with the three-pane layout shown above
-4. The dev server starts on a deterministic port via worktrunk's `{{ branch | hash_port }}`
-5. The cmux browser panel opens pointing at the dev server
-6. Claude Code launches in the left pane (wrapped in zmx if available)
-7. Sidebar metadata is set: task, branch, port, progress
+1. **worktrunk** creates an isolated worktree with `wt switch --create <branch>` (hooks install deps, start dev server)
+2. A `.worktree-task.md` file is written with the task description and Agent Teams instructions
+3. **cmux** creates a workspace with the appropriate layout (web/tool/minimal based on project type)
+4. For web layouts: browser panel at `localhost:<hash_port>`, dev server pane (~20% height)
+5. Claude Code launches in the left pane via zmx for session persistence
+6. Sidebar metadata is set: task, branch, port, progress
+7. Plan file is updated: linked tasks marked as `in_progress`
+
+### Adaptive team composition
+
+| Task type | Team | Layout |
+|-----------|------|--------|
+| UI component | lead + tester (unit + Storybook) + reviewer + security | web (3-pane) |
+| API/backend | lead + tester (API tests) + reviewer + security | web (3-pane) |
+| Infrastructure/config | lead + tester (smoke tests) + security | tool (2-pane) |
+| CLI tool/plugin | lead + tester + security | tool (2-pane) |
+| Documentation | solo (no team) | minimal (1-pane) |
+
+Security is included on **all code tasks**. Override with `--solo` or `--team` flags.
+
+### Security teammate
+
+Every code task includes a security teammate that audits for:
+- Injection (SQL, XSS, command, template)
+- Secrets/credentials (API keys, tokens, PII)
+- Authentication/authorization (missing auth, broken access control)
+- Data exposure (PII in logs, error messages, URLs)
+- Supply chain (dependency vulnerabilities, typosquatting)
+- LLM security (prompt injection, insecure output handling)
+
+The security teammate **reports but does not fix** — findings are routed to the implementer. Merge is blocked on CRITICAL/HIGH findings.
 
 ### Port allocation
 
 Each worktree gets a deterministic port from worktrunk's `{{ branch | hash_port }}` filter (range 10000–19999). Same branch always maps to the same port — no conflicts, no configuration.
 
-### Worker status reporting
+### Rebase and conflict resolution
 
-Workers report to the master through the cmux sidebar:
-
-```bash
-cmux set-progress 0.6 --label "Implementing"
-cmux set-status status "writing tests" --icon "hammer"
-cmux log --level info --source "feature-auth" -- "Auth middleware done"
-```
-
-The master reads this with `/devmux:workers` which aggregates `wt list` and `cmux sidebar-state`.
+When `/devmux:harvest` merges a branch:
+1. **Proactive rebase**: Other active workers are offered a rebase to stay current
+2. **Tiered conflict resolution**: Auto-resolve mechanical conflicts → bounce semantic conflicts back to worker → user intervenes as safety net
 
 ### Bare repo model
 
@@ -136,10 +166,6 @@ project/
 | Go | `go.mod` | — |
 | Ruby | `Gemfile` | — |
 | Java | `pom.xml` / `build.gradle` | — |
-
-## Known issues
-
-- **cmux split crash on Intel Macs**: `new-split` can crash cmux (patch merged, awaiting release). Workaround: run sessions inside zmx for crash resilience. The spawn command degrades gracefully to a 2-pane layout if splits fail.
 
 ## License
 
