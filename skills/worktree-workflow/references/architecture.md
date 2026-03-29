@@ -48,22 +48,37 @@ Sub-task coordination layer running inside each worker session:
 - Plan approval flow for reviewer teammates
 - Teammates: tester, reviewer, security (adaptive by task type)
 
-## Worker Workspace Layout
+## Worker Workspace Layouts
 
+### Web layout (3-pane) — web frameworks with dev servers
 ```
 ┌─────────────────┬──────────────────┐
 │                 │ cmux Browser     │
 │ Claude Code     │ localhost:port   │
-│ (worker agent)  │                  │
-│                 ├──────────────────┤
+│ (worker agent   │ (~80% height)    │
+│  + Agent Team)  ├──────────────────┤
 │                 │ Dev Server logs  │
-│                 │ :hash_port       │
+│                 │ (~20% height)    │
 └─────────────────┴──────────────────┘
 ```
 
-- **Left pane** (full height): Claude Code — primary workspace
-- **Right pane top**: cmux browser — visual feedback from dev server
-- **Right pane bottom**: Dev server terminal — logs
+### Tool layout (2-pane) — CLIs, plugins, libraries
+```
+┌─────────────────┬──────────────────┐
+│ Claude Code     │ Utility terminal │
+│ (worker agent   │ (tests, builds)  │
+│  + Agent Team)  │                  │
+└─────────────────┴──────────────────┘
+```
+
+### Minimal layout (1-pane) — documentation-only tasks
+```
+┌────────────────────────────────────┐
+│ Claude Code (solo worker)          │
+└────────────────────────────────────┘
+```
+
+Browser can be added on demand to any layout: `cmux browser open <url>`
 
 ## Data Flow
 

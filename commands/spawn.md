@@ -23,14 +23,18 @@ Parse `$ARGUMENTS` for:
    ```bash
    wt switch --create <branch> --no-cd
    ```
+   **Verify**: Check that the command succeeded (exit code 0). If it fails, report the error to the user and **stop** — do not continue to Phase B. Common failures:
+   - Branch already exists: suggest a different name or `wt switch <branch>` to reuse
+   - Uncommitted changes: suggest committing or stashing first
+   - Disk full: report the error
 
 2. **Get worktree info** from worktrunk's JSON output:
    ```bash
    wt list --format=json
    ```
    Parse the JSON to find the entry matching `<branch>`. Extract:
-   - `path` — the worktree directory
-   - `url` — the dev server URL (includes hash_port from `.config/wt.toml`)
+   - `path` — the worktree directory (**required** — stop if not found; worktree creation likely failed)
+   - `url` — the dev server URL (optional, includes hash_port from `.config/wt.toml`)
 
    If `url` is present, extract the port from it. Otherwise fall back:
    ```bash
@@ -189,6 +193,8 @@ The browser and dev server panes can always be added later on demand via `cmux b
    ```
    Parse the output for the workspace ref (e.g., `OK workspace:N` — extract `workspace:N`).
 
+   **If this fails** (cmux not running, path doesn't exist): report the error and **stop**. The worktree was created in Phase A — tell the user they can launch the worker manually with `cd <worktree_path> && claude`.
+
 7. **Rename workspace** to the branch name:
    ```bash
    cmux rename-workspace --workspace <ref> "<branch>"
@@ -207,6 +213,8 @@ The browser and dev server panes can always be added later on demand via `cmux b
    cmux --json browser open "http://localhost:<port>" --workspace <ref>
    ```
    Note the browser's `pane_ref` — this is the right pane.
+
+   **If browser open fails**: Fall back to **tool layout** instead (the browser can be opened later once the dev server is running). Continue with the tool layout steps below and write `"layout": "tool"` (not `"web"`) to `.devmux-workspace.json`.
 
 10. **Split right pane** for dev server terminal below the browser:
     ```bash
@@ -306,7 +314,7 @@ Skip splitting entirely. The workspace has a single terminal pane for Claude Cod
 
 ### Phase C — Update plan (if applicable)
 
-16. **Update plan file** if `--plan-tasks` was provided and `.devmux-plan.md` exists:
+17. **Update plan file** if `--plan-tasks` was provided and `.devmux-plan.md` exists:
     Read `.devmux-plan.md` with the Read tool. For each linked plan task, update:
     - `**Status**`: `queued` → `in_progress`
     - `**Branch**`: `—` → `<branch>`

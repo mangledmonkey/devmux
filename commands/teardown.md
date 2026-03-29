@@ -52,6 +52,8 @@ Switch away from the worktree if currently in it (switch to the default branch):
 wt switch ^
 ```
 
+**Verify** you are no longer in the target worktree — check that `pwd` does not contain the branch name. If `wt switch ^` failed, report the error and **stop** — do not proceed with removal while inside the worktree.
+
 Then remove:
 ```bash
 wt remove <branch> --force

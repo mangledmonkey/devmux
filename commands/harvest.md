@@ -153,7 +153,7 @@ wt list --format=json
 
 For each non-main worktree that is still active (has a matching cmux workspace):
 ```bash
-git rev-list --count origin/main..<worker_branch>
+git rev-list --count <worker_branch>..origin/main
 ```
 
 If any workers are behind, report:

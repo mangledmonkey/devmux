@@ -4,7 +4,7 @@ How worker agents use cmux's browser automation for rapid visual development ite
 
 ## Overview
 
-Each worker's cmux workspace includes a browser panel (right-top pane) pointed at the dev server (`localhost:<hash_port>`). The worker lead uses cmux browser commands to inspect the running application, catch visual issues, and drive iteration with teammates.
+For workers using the **web layout**, each cmux workspace includes a browser panel (right-top pane) pointed at the dev server (`localhost:<hash_port>`). Tool and minimal layouts can open a browser on demand via `cmux browser open <url>`. The worker lead uses cmux browser commands to inspect the running application, catch visual issues, and drive iteration with teammates.
 
 ## Who Has Browser Access
 

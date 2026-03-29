@@ -62,9 +62,9 @@ For each task, infer the type and note the recommended Agent Team composition:
 
 | Task type | Team composition | Indicators |
 |-----------|-----------------|------------|
-| UI component | lead + tester (unit + Storybook) + reviewer | Files in components/, routes with UI, `.svelte`/`.tsx`/`.vue` |
+| UI component | lead + tester (unit + Storybook) + reviewer + security | Files in components/, routes with UI, `.svelte`/`.tsx`/`.vue` |
 | API/backend | lead + tester (API tests) + reviewer + security | Files in server/, api/, routes with handlers, database |
-| Infrastructure/config | lead + tester (smoke tests) | Config files, build scripts, CI, tooling |
+| Infrastructure/config | lead + tester (smoke tests) + security | Config files, build scripts, CI, tooling |
 | Documentation | solo (no team) | Only `.md` files, no code changes |
 
 Note this as a `Team:` field on each task (used by `/devmux:spawn` to generate Agent Team instructions).

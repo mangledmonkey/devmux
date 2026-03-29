@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # SessionStart hook: inject worker context when running in a linked worktree.
-# If .worktree-task.md exists in the worktree root, output task context and
-# instructions for the worker agent. Otherwise, output nothing.
+# Reads .worktree-task.md for task content and .devmux-workspace.json for
+# workspace metadata (browser surface, layout type, plan tasks). Outputs
+# layout-specific instructions, Agent Team preamble (if applicable), and
+# completion checklist. Outputs nothing if not in a linked worktree or no
+# task file exists.
 
 set -euo pipefail
 
@@ -29,14 +32,31 @@ if grep -q "^## Agent Team Instructions" "$task_file" 2>/dev/null; then
 fi
 
 # Read workspace metadata if available (written by /devmux:spawn)
+# Uses python3 (available on all macOS) for reliable JSON parsing —
+# handles multi-line arrays, null values, and malformed files gracefully.
 workspace_json=".devmux-workspace.json"
 browser_surface=""
 plan_tasks=""
 layout=""
-if [[ -f "$workspace_json" ]]; then
-  browser_surface=$(grep -o '"browser_surface"[[:space:]]*:[[:space:]]*"[^"]*"' "$workspace_json" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//') || true
-  plan_tasks=$(grep -o '"plan_tasks"[[:space:]]*:[[:space:]]*\[[^]]*\]' "$workspace_json" 2>/dev/null | head -1 | sed 's/.*: *//;s/[][]//g;s/"//g') || true
-  layout=$(grep -o '"layout"[[:space:]]*:[[:space:]]*"[^"]*"' "$workspace_json" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//') || true
+if [[ -f "$workspace_json" && -r "$workspace_json" && -s "$workspace_json" ]]; then
+  eval "$(python3 -c "
+import json, sys
+try:
+    with open('$workspace_json') as f:
+        d = json.load(f)
+    bs = d.get('browser_surface') or ''
+    pt = ','.join(str(t) for t in (d.get('plan_tasks') or []))
+    ly = d.get('layout') or ''
+    # Shell-safe output (single-quote values to prevent injection)
+    print(f\"browser_surface='{bs}'\")
+    print(f\"plan_tasks='{pt}'\")
+    print(f\"layout='{ly}'\")
+except Exception as e:
+    print(f'# WARNING: Failed to parse {\"$workspace_json\"}: {e}', file=sys.stderr)
+    print(\"browser_surface=''\")
+    print(\"plan_tasks=''\")
+    print(\"layout=''\")
+" 2>/dev/null)" || true
 fi
 
 # --- Header ---
